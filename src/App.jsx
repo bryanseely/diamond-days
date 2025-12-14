@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Trophy, MapPin, Calendar, Activity, Plus, Trash2, 
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
   BookOpen, ExternalLink, Shield, Zap, Clock, CircleDot, 
   Medal, Map as MapIcon, User, Hash, Star, Target,
-  ChevronDown, Palette, LogOut, LogIn
+  ChevronDown, Palette, LogOut, LogIn, Settings
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -30,7 +30,8 @@ import {
   where
 } from "firebase/firestore";
 
-// --- Firebase Configuration ---
+// --- FIREBASE CONFIGURATION (ACTION REQUIRED) ---
+// PASTE YOUR CONFIG HERE
 const firebaseConfig = {
   apiKey: "AIzaSyDPDbT-IFJts2bNfeGGVVyx8_TIJevvFbs",
   authDomain: "diamond-days.firebaseapp.com",
@@ -40,10 +41,13 @@ const firebaseConfig = {
   appId: "1:878993322448:web:a2bbb52b6dd995e7abc9d5"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const provider = new GoogleAuthProvider(); // <--- Make sure to keep this!
+const provider = new GoogleAuthProvider();
+
+// ID for data separation
 const appId = 'diamond-days-tracker';
 
 // --- Constants & Colors ---
@@ -66,14 +70,14 @@ const DEFAULT_SEASON = {
   throws: 'L',
   hometown: 'Seattle, WA',
   colors: {
-    primary: '#0C2340',     // Navy
-    secondary: '#5BC2BD',   // Teal
-    accent: '#C4CED4',      // Silver
-    text: '#FFFFFF'         // White text on primary
+    primary: '#0C2340',
+    secondary: '#5BC2BD',
+    accent: '#C4CED4',
+    text: '#FFFFFF'
   }
 };
 
-// Coordinates (Lat/Lng) - Fallback if no specific lat/long provided
+// Coordinates (Lat/Lng)
 const CITY_COORDS_LATLNG = {
   'Seattle': [47.6062, -122.3321],
   'Bellevue': [47.6101, -122.2015],
@@ -101,7 +105,6 @@ const CITY_COORDS_LATLNG = {
   'Issaquah': [47.5301, -122.0326],
 };
 
-// --- Helpers ---
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr + 'T12:00:00'); 
@@ -114,7 +117,6 @@ const safeParseInt = (val) => {
   return isNaN(num) ? '' : num;
 };
 
-// Stats Labels Map
 const STAT_LABELS = {
   plateAppearances: 'PA', atBats: 'AB', runsScored: 'R', singles: '1B', doubles: '2B', triples: '3B',
   homeRuns: 'HR', walks: 'BB', hbp: 'HBP', rbi: 'RBI', stolenBases: 'SB', batterStrikeouts: 'SO',
@@ -234,7 +236,6 @@ const GameFormModal = ({ initialGame, onSave, onCancel, colors }) => {
           <button onClick={onCancel}><X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <div className="p-6 overflow-y-auto">
-          {/* Game Info */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
              <div className="col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Opponent</label>
@@ -261,8 +262,6 @@ const GameFormModal = ({ initialGame, onSave, onCancel, colors }) => {
                 </select>
              </div>
           </div>
-
-          {/* Stats Inputs */}
           <div className="space-y-6">
              <div>
                 <h4 className="text-xs font-black uppercase mb-2 flex items-center gap-1" style={{ color: colors.secondary }}><Target className="w-3 h-3"/> Batting</h4>
@@ -675,8 +674,7 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
    );
 };
 
-export default function App() {
-  const [user, setUser] = useState(null);
+function AuthenticatedApp({ user, onLogout }) {
   const [seasons, setSeasons] = useState([]);
   const [activeSeason, setActiveSeason] = useState(DEFAULT_SEASON);
   const [tournaments, setTournaments] = useState([]);
@@ -702,26 +700,15 @@ export default function App() {
     document.head.appendChild(link);
   }, []);
 
-  // Auth Init
-// Remove the initAuth() call that does signInAnonymously
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   // Fetch Seasons
   useEffect(() => {
-    if (!user) return;
     const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'seasons'), orderBy('year', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
        if (docs.length > 0) {
           setSeasons(docs);
           if (activeSeason.id === 'default-2025' && docs.length > 0) {
-             setActiveSeason(docs[docs.length - 1]); // Default to latest season
+             setActiveSeason(docs[docs.length - 1]);
           }
        } else {
           setSeasons([DEFAULT_SEASON]);
@@ -732,8 +719,6 @@ export default function App() {
 
   // Fetch Tournaments for Active Season
   useEffect(() => {
-    if (!user) return;
-    
     const q = query(
       collection(db, 'artifacts', appId, 'users', user.uid, 'tournaments'), 
       orderBy('startDate', 'desc')
@@ -741,12 +726,10 @@ export default function App() {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allTourneys = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
       const filtered = allTourneys.filter(t => {
          const tSeason = t.seasonId || 'default-2025';
          return tSeason === activeSeason.id;
       });
-      
       setTournaments(filtered);
     });
     return () => unsubscribe();
@@ -754,9 +737,7 @@ export default function App() {
 
   // Handlers
   const handleSaveTournament = async (data) => {
-    if (!user) return;
     const dataWithSeason = { ...data, seasonId: activeSeason.id };
-    
     try {
       if (editingId) {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tournaments', editingId), dataWithSeason);
@@ -769,30 +750,24 @@ export default function App() {
   };
 
   const handleUpdateTournament = async (id, data) => {
-     if(!user) return;
      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tournaments', id), data);
   };
 
   const handleDeleteTournament = async () => {
-    if (!user || !deleteId) return;
+    if (!deleteId) return;
     await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tournaments', deleteId));
     setDeleteId(null);
     if(view === 'detail') setView('dashboard');
   };
 
   const handleSaveSeason = async (data) => {
-     if (!user) return;
      if (editingSeasonId === 'default-2025') {
         // Special case: Persist the default season to DB with a known ID
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'seasons', 'default-2025'), data, { merge: true });
-        if (activeSeason.id === 'default-2025') {
-            setActiveSeason({ ...data, id: 'default-2025' });
-        }
+        if (activeSeason.id === 'default-2025') setActiveSeason({ ...data, id: 'default-2025' });
      } else if (editingSeasonId) {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'seasons', editingSeasonId), data);
-        if (activeSeason.id === editingSeasonId) {
-           setActiveSeason({ ...activeSeason, ...data });
-        }
+        if (activeSeason.id === editingSeasonId) setActiveSeason({ ...activeSeason, ...data });
      } else {
         await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'seasons'), data);
      }
@@ -801,13 +776,9 @@ export default function App() {
   };
 
   const handleDeleteSeason = async () => {
-    if (!user || !seasonDeleteId) return;
-    if (seasons.length <= 1) return; // Prevent deleting last season
-
+    if (!seasonDeleteId || seasons.length <= 1) return;
     try {
         await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'seasons', seasonDeleteId));
-        
-        // If active season deleted, switch to another
         if (activeSeason.id === seasonDeleteId) {
             const remaining = seasons.filter(s => s.id !== seasonDeleteId);
             if (remaining.length > 0) setActiveSeason(remaining[remaining.length - 1]);
@@ -903,58 +874,68 @@ export default function App() {
                  <div className="text-xs text-white/60 uppercase tracking-[0.2em] font-light">Memories from Travel Ball</div>
               </div>
               
-              {/* Season Selector */}
-              <div className="relative">
-                 <button 
-                    onClick={() => setIsSeasonDropdownOpen(!isSeasonDropdownOpen)}
-                    className="flex items-center gap-2 text-white/90 hover:text-white font-bold text-sm bg-black/20 px-3 py-1.5 rounded-lg transition-all"
-                 >
-                    <span>{activeSeason.year} Season</span>
-                    <ChevronDown className="w-4 h-4" />
-                 </button>
-                 
-                 {isSeasonDropdownOpen && (
-                   <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="py-1">
-                         {seasons.map(s => (
-                            <div key={s.id} className="flex items-center justify-between hover:bg-slate-50 group">
-                               <button 
-                                 onClick={() => { setActiveSeason(s); setIsSeasonDropdownOpen(false); }}
-                                 className={`flex-1 text-left px-4 py-2 text-sm font-bold ${activeSeason.id === s.id ? 'text-blue-900 bg-blue-50' : 'text-slate-600'}`}
-                               >
-                                  {s.year} Season
-                               </button>
-                               <div className="flex gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); openSeasonEdit(s); }}
-                                    className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-200"
-                                    title="Edit Season"
-                                 >
-                                    <Edit2 className="w-3 h-3" />
-                                 </button>
-                                 {seasons.length > 1 && (
-                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); setSeasonDeleteId(s.id); setIsSeasonDropdownOpen(false); }}
-                                      className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-slate-200"
-                                      title="Delete Season"
-                                   >
-                                      <Trash2 className="w-3 h-3" />
-                                   </button>
-                                 )}
+              <div className="flex items-center gap-3">
+                 {/* Season Selector */}
+                 <div className="relative">
+                    <button 
+                       onClick={() => setIsSeasonDropdownOpen(!isSeasonDropdownOpen)}
+                       className="flex items-center gap-2 text-white/90 hover:text-white font-bold text-sm bg-black/20 px-3 py-1.5 rounded-lg transition-all"
+                    >
+                       <span>{activeSeason.year} Season</span>
+                       <ChevronDown className="w-4 h-4" />
+                    </button>
+                    
+                    {isSeasonDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                         <div className="py-1">
+                            {seasons.map(s => (
+                               <div key={s.id} className="flex items-center justify-between hover:bg-slate-50 group">
+                                  <button 
+                                    onClick={() => { setActiveSeason(s); setIsSeasonDropdownOpen(false); }}
+                                    className={`flex-1 text-left px-4 py-2 text-sm font-bold ${activeSeason.id === s.id ? 'text-blue-900 bg-blue-50' : 'text-slate-600'}`}
+                                  >
+                                     {s.year} Season
+                                  </button>
+                                  <div className="flex gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                       onClick={(e) => { e.stopPropagation(); openSeasonEdit(s); }}
+                                       className="p-1 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-200"
+                                       title="Edit Season"
+                                    >
+                                       <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    {seasons.length > 1 && (
+                                      <button 
+                                         onClick={(e) => { e.stopPropagation(); setSeasonDeleteId(s.id); setIsSeasonDropdownOpen(false); }}
+                                         className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-slate-200"
+                                         title="Delete Season"
+                                      >
+                                         <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
                                </div>
+                            ))}
+                            <div className="border-t border-slate-100 mt-1 pt-1">
+                               <button 
+                                 onClick={() => { setEditingSeasonId(null); setIsSeasonModalOpen(true); setIsSeasonDropdownOpen(false); }}
+                                 className="w-full text-left px-4 py-2 text-xs font-black text-slate-400 hover:text-blue-600 hover:bg-slate-50 uppercase tracking-wider flex items-center gap-2"
+                               >
+                                  <Plus className="w-3 h-3" /> Add Season
+                               </button>
                             </div>
-                         ))}
-                         <div className="border-t border-slate-100 mt-1 pt-1">
-                            <button 
-                              onClick={() => { setEditingSeasonId(null); setIsSeasonModalOpen(true); setIsSeasonDropdownOpen(false); }}
-                              className="w-full text-left px-4 py-2 text-xs font-black text-slate-400 hover:text-blue-600 hover:bg-slate-50 uppercase tracking-wider flex items-center gap-2"
-                            >
-                               <Plus className="w-3 h-3" /> Add Season
-                            </button>
                          </div>
                       </div>
-                   </div>
-                 )}
+                    )}
+                 </div>
+                 
+                 <button 
+                    onClick={onLogout}
+                    className="bg-black/20 hover:bg-white/10 text-white/80 p-2 rounded-lg transition-colors"
+                    title="Sign Out"
+                 >
+                    <LogOut className="w-4 h-4" />
+                 </button>
               </div>
            </div>
 
