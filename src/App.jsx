@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Trophy, MapPin, Calendar, Activity, Plus, Trash2, 
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
