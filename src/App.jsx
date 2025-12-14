@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Trophy, MapPin, Calendar, Activity, Plus, Trash2, 
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
@@ -464,6 +464,210 @@ const TournamentForm = ({ initialData, onSave, onCancel, colors }) => {
       )}
     </div>
   );
+};
+
+const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colors }) => {
+   const [gameToView, setGameToView] = useState(null);
+   const [journalEntry, setJournalEntry] = useState(tournament.journal || '');
+   const [isJournalEditing, setIsJournalEditing] = useState(false);
+   const [isDetailGameModalOpen, setIsDetailGameModalOpen] = useState(false);
+
+   const addGameFromDetail = (newGameData) => {
+      const updatedGames = [...(tournament.games || []), newGameData];
+      const aggStats = updatedGames.reduce((acc, g) => {
+         const s = g.stats || INITIAL_GAME_STATS;
+         Object.keys(s).forEach(k => { if (!acc[k]) acc[k] = 0; acc[k] += (s[k] || 0); });
+         return acc;
+      }, {});
+      const wins = updatedGames.filter(g => g.result === 'W').length;
+      const losses = updatedGames.filter(g => g.result === 'L').length;
+      const ties = updatedGames.filter(g => g.result === 'T').length;
+
+      onUpdate(tournament.id, { games: updatedGames, wins, losses, ties, gamesPlayed: updatedGames.length, ...aggStats });
+   };
+
+   const deleteGame = async (idx) => {
+      const updatedGames = [...(tournament.games || [])];
+      updatedGames.splice(idx, 1);
+      const aggStats = updatedGames.reduce((acc, g) => { const s = g.stats || INITIAL_GAME_STATS; Object.keys(s).forEach(k => { if (!acc[k]) acc[k] = 0; acc[k] += (s[k] || 0); }); return acc; }, {});
+      const wins = updatedGames.filter(g => g.result === 'W').length;
+      const losses = updatedGames.filter(g => g.result === 'L').length;
+      const ties = updatedGames.filter(g => g.result === 'T').length;
+      await onUpdate(tournament.id, { games: updatedGames, wins, losses, ties, gamesPlayed: updatedGames.length, ...aggStats });
+   };
+
+   const saveJournal = async () => { await onUpdate(tournament.id, { journal: journalEntry }); setIsJournalEditing(false); };
+
+   const atBats = tournament.atBats || 0;
+   const hits = (tournament.singles||0) + (tournament.doubles||0) + (tournament.triples||0) + (tournament.homeRuns||0);
+   const avg = atBats > 0 ? (hits / atBats).toFixed(3).replace('0.', '.') : '.000';
+   
+   const plateApps = tournament.plateAppearances || 0;
+   const onBase = hits + (tournament.walks||0) + (tournament.hbp||0);
+   const obp = plateApps > 0 ? (onBase / plateApps).toFixed(3).replace('0.', '.') : '.000';
+
+   const ip = tournament.inningsPitched || 0;
+   const er = tournament.earnedRuns || 0;
+   const era = ip > 0 ? ((er * 6) / ip).toFixed(2) : '-';
+
+   return (
+      <div className="animate-in slide-in-from-right duration-300">
+         <button onClick={onBack} className="mb-4 flex items-center text-slate-500 hover:text-slate-800 font-bold text-sm transition-colors">
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+         </button>
+
+         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="h-48 md:h-64 relative" style={{ backgroundColor: colors.primary }}>
+               {tournament.coverPhoto ? (
+                  <img src={tournament.coverPhoto} className="w-full h-full object-cover opacity-80" />
+               ) : (
+                  <div className="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+               )}
+               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+               <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full">
+                  <div className="flex justify-between items-end">
+                     <div>
+                        <div className="flex items-center gap-2 mb-2">
+                           <span className="text-white/90 text-[10px] font-black px-2 py-0.5 rounded uppercase" style={{ backgroundColor: colors.secondary }}>{tournament.result}</span>
+                           <span className="text-slate-300 text-xs font-bold flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(tournament.startDate)}</span>
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-black text-white leading-none mb-2" style={{ fontFamily: 'BioRhyme, serif' }}>{tournament.name}</h1>
+                        <div className="flex items-center gap-4 text-slate-300 text-sm font-medium">
+                           <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {tournament.location}</span>
+                           <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {tournament.milesTraveled} Miles</span>
+                        </div>
+                     </div>
+                     <div className="flex gap-2">
+                        <button onClick={() => onEdit(tournament.id)} className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => onDelete(tournament.id)} className="p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-6 md:p-8">
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Batting AVG</div>
+                     <div className="text-3xl font-black" style={{ color: colors.primary }}>{avg}</div>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">On Base %</div>
+                     <div className="text-3xl font-black" style={{ color: colors.primary }}>{obp}</div>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Hits</div>
+                     <div className="text-3xl font-black" style={{ color: colors.primary }}>{hits}</div>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">ERA</div>
+                     <div className="text-3xl font-black text-orange-500">{era}</div>
+                  </div>
+               </div>
+
+               <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                     <h3 className="text-sm font-black uppercase mb-4 flex items-center gap-2" style={{ color: colors.primary }}>
+                        <Layout className="w-4 h-4" /> Game Log
+                     </h3>
+                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                           {(tournament.games || []).map((g, idx) => (
+                              <GameLogItem key={idx} game={g} onClick={() => setGameToView(g)} onDelete={() => deleteGame(idx)} colors={colors} />
+                           ))}
+                           {(!tournament.games || tournament.games.length === 0) && (
+                              <div className="text-slate-400 italic text-sm text-center py-4">No games logged yet.</div>
+                           )}
+                       </div>
+                     </div>
+                     <button 
+                        onClick={() => setIsDetailGameModalOpen(true)}
+                        className="w-full py-2 text-white text-xs font-bold rounded hover:opacity-90 transition-colors"
+                        style={{ backgroundColor: colors.primary }}
+                     >
+                        ADD GAME
+                     </button>
+                  </div>
+
+                  <div>
+                     <h3 className="text-sm font-black uppercase mb-4 flex items-center gap-2" style={{ color: colors.primary }}>
+                        <BookOpen className="w-4 h-4" /> Journal & Photos
+                     </h3>
+                     {tournament.albumLink && (
+                        <a href={tournament.albumLink} target="_blank" rel="noreferrer" className="block mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors group">
+                           <div className="flex items-center gap-3">
+                              <div className="bg-white p-2 rounded-full shadow-sm text-blue-600"><Target className="w-5 h-5" /></div>
+                              <div>
+                                 <div className="font-bold text-blue-900 text-sm group-hover:underline">View Google Photos Album</div>
+                                 <div className="text-blue-700/60 text-xs">External Link</div>
+                              </div>
+                              <ExternalLink className="w-4 h-4 text-blue-400 ml-auto" />
+                           </div>
+                        </a>
+                     )}
+                     <div className="relative">
+                        <div className="flex justify-between items-center mb-2">
+                           <div className="text-xs font-bold text-slate-400 uppercase">Memory Log</div>
+                           <button onClick={isJournalEditing ? saveJournal : () => setIsJournalEditing(true)} className="text-xs font-bold hover:underline" style={{ color: colors.secondary }}>
+                              {isJournalEditing ? 'Save Entry' : 'Edit Entry'}
+                           </button>
+                        </div>
+                        {isJournalEditing ? (
+                           <textarea 
+                             className="w-full h-40 p-4 text-sm border rounded-xl outline-none bg-yellow-50/50"
+                             style={{ borderColor: colors.secondary, focusRingColor: colors.secondary }}
+                             value={journalEntry}
+                             onChange={(e) => setJournalEntry(e.target.value)}
+                             placeholder="Write about the tournament..."
+                           />
+                        ) : (
+                           <div className="bg-white p-4 rounded-xl border border-slate-200 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px] shadow-sm">
+                              {journalEntry || "No journal entry yet."}
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         {/* Read-Only Game Modal */}
+         {gameToView && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[80]" onClick={() => setGameToView(null)}>
+               <div className="bg-white rounded-xl w-full max-w-lg p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-4 border-b pb-2">
+                     <h3 className="font-black text-lg" style={{ color: colors.primary }}>Game Details vs {gameToView.opponent}</h3>
+                     <button onClick={() => setGameToView(null)}><X className="w-5 h-5 text-slate-400" /></button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                     <div className="bg-slate-50 p-2 rounded text-center"><span className="text-xs text-slate-400 block font-bold">Result</span><span className="font-bold" style={{ color: colors.primary }}>{gameToView.result} ({gameToView.scoreUs}-{gameToView.scoreThem})</span></div>
+                     <div className="bg-slate-50 p-2 rounded text-center"><span className="text-xs text-slate-400 block font-bold">Type</span><span className="font-bold" style={{ color: colors.primary }}>{gameToView.type}</span></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                     {gameToView.stats && Object.entries(gameToView.stats).map(([k, v]) => (
+                        v > 0 && (
+                           <div key={k} className="border p-1 rounded">
+                              <span className="block text-[9px] text-slate-400 uppercase font-bold">{STAT_LABELS[k] || k}</span>
+                              <span className="font-mono font-bold" style={{ color: colors.primary }}>{v}</span>
+                           </div>
+                        )
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {/* Add Game Modal (Detail View) */}
+         {isDetailGameModalOpen && (
+            <GameFormModal 
+               initialGame={null}
+               onSave={(g) => { addGameFromDetail(g); setIsDetailGameModalOpen(false); }}
+               onCancel={() => setIsDetailGameModalOpen(false)}
+               colors={colors}
+            />
+         )}
+      </div>
+   );
 };
 
 // --- LOGIN COMPONENT ---
@@ -1092,7 +1296,6 @@ function AuthenticatedApp({ user, onLogout }) {
   );
 }
 
-// --- LOGIN COMPONENT ---
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
