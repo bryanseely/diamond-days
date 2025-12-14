@@ -4,7 +4,7 @@ import {
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
   BookOpen, ExternalLink, Shield, Zap, Clock, CircleDot, 
   Medal, Map as MapIcon, User, Hash, Star, Target,
-  ChevronDown, Palette, LogOut, LogIn, Settings
+  ChevronDown, Palette, LogOut, LogIn
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -674,6 +674,31 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
    );
 };
 
+// --- LOGIN COMPONENT ---
+const LoginScreen = ({ onLogin }) => (
+  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+      <div className="w-24 h-24 bg-slate-900 rounded-full mx-auto mb-6 flex items-center justify-center border-4 border-[#5BC2BD]">
+         <Trophy className="w-12 h-12 text-[#5BC2BD]" />
+      </div>
+      <h1 className="text-3xl font-black text-slate-900 mb-2" style={{ fontFamily: 'BioRhyme, serif' }}>DIAMOND DAYS</h1>
+      <p className="text-slate-500 mb-8 font-medium">Your Travel Ball Career, Archived.</p>
+      
+      <button 
+        onClick={onLogin}
+        className="w-full py-4 bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:scale-[1.02]"
+      >
+        <div className="bg-white p-1 rounded-full"><LogIn className="w-4 h-4 text-[#4285F4]" /></div>
+        Sign in with Google
+      </button>
+      <p className="mt-6 text-xs text-slate-400">
+        Sign in to save your stats and access them from any device.
+      </p>
+    </div>
+  </div>
+);
+
+// --- MAIN AUTHENTICATED APP ---
 function AuthenticatedApp({ user, onLogout }) {
   const [seasons, setSeasons] = useState([]);
   const [activeSeason, setActiveSeason] = useState(DEFAULT_SEASON);
@@ -707,8 +732,9 @@ function AuthenticatedApp({ user, onLogout }) {
        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
        if (docs.length > 0) {
           setSeasons(docs);
-          if (activeSeason.id === 'default-2025' && docs.length > 0) {
-             setActiveSeason(docs[docs.length - 1]);
+          // Only switch season if we are currently on the "default placeholder"
+          if (activeSeason.id === 'default-2025') {
+              setActiveSeason(docs[docs.length - 1]);
           }
        } else {
           setSeasons([DEFAULT_SEASON]);
@@ -1272,4 +1298,36 @@ function AuthenticatedApp({ user, onLogout }) {
       )}
     </div>
   );
+}
+
+// --- LOGIN COMPONENT ---
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed", error);
+      alert("Login failed. Check that your domain is authorized in Firebase Console.");
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-400">Loading...</div>;
+  if (!user) return <LoginScreen onLogin={handleLogin} />;
+
+  return <AuthenticatedApp user={user} onLogout={handleLogout} />;
 }
