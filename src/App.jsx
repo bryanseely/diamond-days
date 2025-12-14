@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Trophy, MapPin, Calendar, Activity, Plus, Trash2, 
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
   BookOpen, ExternalLink, Shield, Zap, Clock, CircleDot, 
   Medal, Map as MapIcon, User, Hash, Star, Target,
-  ChevronDown, Palette
+  ChevronDown, Palette, LogOut, LogIn
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   signInWithCustomToken, 
   signInAnonymously, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -27,9 +30,7 @@ import {
   where
 } from "firebase/firestore";
 
-// --- 1. SETUP INSTRUCTIONS ---
-// Go to console.firebase.google.com, create a project, and add a Web App.
-// Copy the config object they give you and paste it here:
+// --- Firebase Configuration ---
 const firebaseConfig = {
   apiKey: "AIzaSyDPDbT-IFJts2bNfeGGVVyx8_TIJevvFbs",
   authDomain: "diamond-days.firebaseapp.com",
@@ -39,12 +40,10 @@ const firebaseConfig = {
   appId: "1:878993322448:web:a2bbb52b6dd995e7abc9d5"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// A unique ID for your data bucket. You can keep this as is.
+const provider = new GoogleAuthProvider(); // <--- Make sure to keep this!
 const appId = 'diamond-days-tracker';
 
 // --- Constants & Colors ---
@@ -74,7 +73,7 @@ const DEFAULT_SEASON = {
   }
 };
 
-// Coordinates (Lat/Lng)
+// Coordinates (Lat/Lng) - Fallback if no specific lat/long provided
 const CITY_COORDS_LATLNG = {
   'Seattle': [47.6062, -122.3321],
   'Bellevue': [47.6101, -122.2015],
@@ -180,51 +179,30 @@ const BaseballCardStat = ({ label, value, colors }) => (
   </div>
 );
 
-// --- SVG Map Component ---
 const WashingtonMap = ({ tournaments, onPinClick }) => {
   const BOUNDS = { N: 49.05, S: 45.50, W: -125.00, E: -116.80 };
-
   const getPosition = (lat, lng) => {
     const y = ((BOUNDS.N - lat) / (BOUNDS.N - BOUNDS.S)) * 100;
     const x = ((lng - BOUNDS.W) / (BOUNDS.E - BOUNDS.W)) * 100;
     return { x, y };
   };
-
   return (
     <div className="relative w-full aspect-[1.45] bg-[#eef5fa] rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
-      <img 
-        src="https://raw.githubusercontent.com/bryanseely/junkfiles-testfiles/refs/heads/master/WA_map.svg" 
-        alt="Map of Washington"
-        className="absolute inset-0 w-full h-full object-contain p-4 opacity-80"
-      />
-      
+      <img src="https://raw.githubusercontent.com/bryanseely/junkfiles-testfiles/refs/heads/master/WA_map.svg" alt="Map of Washington" className="absolute inset-0 w-full h-full object-contain p-4 opacity-80" />
       {tournaments.map((t) => {
         let coords = null;
-        if (t.latitude && t.longitude) {
-           coords = [parseFloat(t.latitude), parseFloat(t.longitude)];
-        } else {
-           const cityKey = Object.keys(CITY_COORDS_LATLNG).find(k => t.location?.includes(k));
-           coords = cityKey ? CITY_COORDS_LATLNG[cityKey] : null;
-        }
-
+        if (t.latitude && t.longitude) { coords = [parseFloat(t.latitude), parseFloat(t.longitude)]; } 
+        else { const cityKey = Object.keys(CITY_COORDS_LATLNG).find(k => t.location?.includes(k)); coords = cityKey ? CITY_COORDS_LATLNG[cityKey] : null; }
         if (!coords) return null;
         const pos = getPosition(coords[0], coords[1]);
         if (pos.x < 0 || pos.x > 100 || pos.y < 0 || pos.y > 100) return null;
-
         return (
-           <div 
-             key={t.id}
-             onClick={() => onPinClick(t)}
-             className="absolute cursor-pointer hover:z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-110"
-             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-           >
+           <div key={t.id} onClick={() => onPinClick(t)} className="absolute cursor-pointer hover:z-50 transform -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-110" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
               <div className="relative">
                  <div className="w-4 h-4 bg-[#0C2340] rounded-full border-2 border-white shadow-md flex items-center justify-center">
                     <div className="w-1.5 h-1.5 bg-[#5BC2BD] rounded-full"></div>
                  </div>
-                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white px-2 py-1 rounded shadow-lg text-[10px] font-bold text-[#0C2340] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-100 z-50">
-                    {t.name}
-                 </div>
+                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white px-2 py-1 rounded shadow-lg text-[10px] font-bold text-[#0C2340] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-100 z-50">{t.name}</div>
               </div>
            </div>
         );
