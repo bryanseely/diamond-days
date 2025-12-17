@@ -1183,7 +1183,7 @@ function AuthenticatedApp({ user, onLogout }) {
                           <div className="text-xs text-slate-500 mb-3 flex items-center gap-1 font-medium uppercase"><MapPin className="w-3 h-3" /> {t.location}</div>
                           
                           {t.coverPhoto && (
-                             <div className="h-24 w-full rounded-lg bg-slate-100 mb-3 overflow-hidden">
+                             <div className="h-48 w-full rounded-lg bg-slate-100 mb-3 overflow-hidden">
                                 <img src={t.coverPhoto} alt="" className="w-full h-full object-cover" />
                              </div>
                           )}
