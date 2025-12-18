@@ -965,7 +965,7 @@ function AuthenticatedApp({ user, onLogout }) {
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
               <div className="flex items-center gap-4">
                  <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full border-[6px] flex items-center justify-center overflow-hidden shadow-xl transform hover:scale-105 transition-transform duration-300" style={{ borderColor: colors.secondary }}>
-                    <span className="font-black text-3xl md:text-4xl" style={{ fontFamily: 'BioRhyme, serif', color: colors.primary }}>#{activeSeason.number}</span>
+                    <span className="font-black text-3xl md:text-4xl" style={{ fontFamily: 'BioRhyme, serif', color: colors.primary }}>{activeSeason.number}</span>
                  </div>
                  <div className="flex flex-col">
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none text-white drop-shadow-sm mb-2" style={{ fontFamily: 'BioRhyme, serif' }}>
