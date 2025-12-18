@@ -517,7 +517,7 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
          </button>
 
          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="h-48 md:h-64 relative" style={{ backgroundColor: colors.primary }}>
+            <div className="h-64 md:h-96 relative" style={{ backgroundColor: colors.primary }}>
                {tournament.coverPhoto ? (
                   <img src={tournament.coverPhoto} className="w-full h-full object-cover opacity-80" />
                ) : (
