@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Trophy, MapPin, Calendar, Activity, Plus, Trash2, 
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
   BookOpen, ExternalLink, Shield, Zap, Clock, CircleDot, 
   Medal, Map as MapIcon, User, Hash, Star, Target,
-  ChevronDown, Palette, LogOut, LogIn
+  ChevronDown, Palette, LogOut, LogIn, PenTool
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -181,6 +181,36 @@ const BaseballCardStat = ({ label, value, colors }) => (
   </div>
 );
 
+const SimpleRichText = ({ text }) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return (
+    <div className="text-sm text-slate-700 leading-relaxed font-sans">
+      {lines.map((line, index) => {
+        // Heading (starts with #)
+        if (line.trim().startsWith('#')) {
+           return <h4 key={index} className="text-lg font-black text-[#0C2340] mt-5 mb-2 font-serif" style={{ fontFamily: 'BioRhyme, serif' }}>{line.replace(/^#+\s*/, '')}</h4>;
+        }
+        // Bullet list item (starts with -)
+        if (line.trim().startsWith('-')) {
+           return (
+              <div key={index} className="flex items-start gap-2 ml-2 mb-1">
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#5BC2BD] mt-2 shrink-0" />
+                 <span>{line.replace(/^-\s*/, '')}</span>
+              </div>
+           );
+        }
+        // Standard Paragraph (non-empty)
+        if (line.trim().length > 0) {
+           return <p key={index} className="mb-3">{line}</p>;
+        }
+        // Empty line (spacer)
+        return <div key={index} className="h-2" />;
+      })}
+    </div>
+  );
+};
+
 const WashingtonMap = ({ tournaments, onPinClick }) => {
   const BOUNDS = { N: 49.05, S: 45.50, W: -125.00, E: -116.80 };
   const getPosition = (lat, lng) => {
@@ -341,7 +371,7 @@ const SeasonFormModal = ({ initialData, onSave, onCancel }) => {
                </div>
                <div><label className="text-xs font-bold text-slate-500">Team Name</label><input name="teamName" value={formData.teamName} onChange={handleChange} className="w-full p-2 border rounded" placeholder="e.g. City Baseball" /></div>
                <div className="grid grid-cols-3 gap-4">
-                  <div><label className="text-xs font-bold text-slate-500">Number</label><input name="number" value={formData.number} onChange={handleChange} className="w-full p-2 border rounded" /></div>
+                  <div><label className="text-xs font-bold text-slate-500">Number</label><input type= "number" name="number" value={formData.number} onChange={handleChange} className="w-full p-2 border rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500">Bats</label><select name="bats" value={formData.bats} onChange={handleChange} className="w-full p-2 border rounded"><option>R</option><option>L</option><option>S</option></select></div>
                   <div><label className="text-xs font-bold text-slate-500">Throws</label><select name="throws" value={formData.throws} onChange={handleChange} className="w-full p-2 border rounded"><option>R</option><option>L</option></select></div>
                </div>
@@ -565,13 +595,14 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
                   </div>
                </div>
 
-               <div className="grid md:grid-cols-2 gap-8">
-                  <div>
+               <div className="grid md:grid-cols-3 gap-8">
+                  {/* Left Column: Game Log */}
+                  <div className="md:col-span-1">
                      <h3 className="text-sm font-black uppercase mb-4 flex items-center gap-2" style={{ color: colors.primary }}>
                         <Layout className="w-4 h-4" /> Game Log
                      </h3>
                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
-                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                       <div className="space-y-2 max-h-[400px] overflow-y-auto">
                            {(tournament.games || []).map((g, idx) => (
                               <GameLogItem key={idx} game={g} onClick={() => setGameToView(g)} onDelete={() => deleteGame(idx)} colors={colors} />
                            ))}
@@ -582,50 +613,77 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
                      </div>
                      <button 
                         onClick={() => setIsDetailGameModalOpen(true)}
-                        className="w-full py-2 text-white text-xs font-bold rounded hover:opacity-90 transition-colors"
+                        className="w-full py-3 text-white text-xs font-bold rounded-lg hover:opacity-90 transition-colors shadow-sm"
                         style={{ backgroundColor: colors.primary }}
                      >
                         ADD GAME
                      </button>
                   </div>
 
-                  <div>
-                     <h3 className="text-sm font-black uppercase mb-4 flex items-center gap-2" style={{ color: colors.primary }}>
-                        <BookOpen className="w-4 h-4" /> Journal & Photos
-                     </h3>
-                     {tournament.albumLink && (
-                        <a href={tournament.albumLink} target="_blank" rel="noreferrer" className="block mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors group">
-                           <div className="flex items-center gap-3">
-                              <div className="bg-white p-2 rounded-full shadow-sm text-blue-600"><Target className="w-5 h-5" /></div>
-                              <div>
-                                 <div className="font-bold text-blue-900 text-sm group-hover:underline">View Google Photos Album</div>
-                                 <div className="text-blue-700/60 text-xs">External Link</div>
-                              </div>
-                              <ExternalLink className="w-4 h-4 text-blue-400 ml-auto" />
-                           </div>
-                        </a>
-                     )}
-                     <div className="relative">
-                        <div className="flex justify-between items-center mb-2">
-                           <div className="text-xs font-bold text-slate-400 uppercase">Memory Log</div>
-                           <button onClick={isJournalEditing ? saveJournal : () => setIsJournalEditing(true)} className="text-xs font-bold hover:underline" style={{ color: colors.secondary }}>
-                              {isJournalEditing ? 'Save Entry' : 'Edit Entry'}
-                           </button>
-                        </div>
-                        {isJournalEditing ? (
-                           <textarea 
-                             className="w-full h-40 p-4 text-sm border rounded-xl outline-none bg-yellow-50/50"
-                             style={{ borderColor: colors.secondary, focusRingColor: colors.secondary }}
-                             value={journalEntry}
-                             onChange={(e) => setJournalEntry(e.target.value)}
-                             placeholder="Write about the tournament..."
-                           />
-                        ) : (
-                           <div className="bg-white p-4 rounded-xl border border-slate-200 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap min-h-[100px] shadow-sm">
-                              {journalEntry || "No journal entry yet."}
-                           </div>
+                  {/* Right Column: Story & Photos */}
+                  <div className="md:col-span-2">
+                     <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-black uppercase flex items-center gap-2" style={{ color: colors.primary }}>
+                           <BookOpen className="w-4 h-4" /> Tournament Story
+                        </h3>
+                        {tournament.albumLink && (
+                          <a href={tournament.albumLink} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:underline">
+                             <ExternalLink className="w-3 h-3" /> View Photos & Videos
+                          </a>
                         )}
                      </div>
+
+                     <div className="bg-[#F8F9FA] rounded-xl border border-slate-200 overflow-hidden relative min-h-[400px] flex flex-col">
+                        <div className="flex-1 px-8 pb-4 pt-1">
+                           {isJournalEditing ? (
+                              <textarea 
+                                className="w-full h-full min-h-[300px] bg-transparent border-0 outline-none text-lg leading-relaxed text-slate-800 resize-none font-sans"
+                                value={journalEntry}
+                                onChange={(e) => setJournalEntry(e.target.value)}
+                                placeholder="Write about the tournament... Use # for headings and - for bullets."
+                              />
+                           ) : (
+                             <div className="prose prose-slate max-w-none">
+                               {journalEntry ? (
+                                 <SimpleRichText text={journalEntry} />
+                               ) : (
+                                  <div className="flex flex-col items-center justify-center h-[300px] text-slate-400">
+                                     <PenTool className="w-8 h-8 mb-2 opacity-50" />
+                                     <span className="text-sm font-medium">No story written yet.</span>
+                                  </div>
+                               )}
+                             </div>
+                           )}
+                        </div>
+                        
+                        <div className="bg-white border-t border-slate-100 p-4 flex justify-between items-center">
+                           <div className="text-xs text-slate-400 font-medium">
+                              
+                           </div>
+                           <button 
+                             onClick={isJournalEditing ? saveJournal : () => setIsJournalEditing(true)} 
+                             className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors hover:bg-slate-50"
+                             style={{ color: colors.primary, border: `1px solid ${colors.primary}20` }}
+                           >
+                              {isJournalEditing ? 'Save Story' : 'Edit Story'}
+                           </button>
+                        </div>
+                     </div>
+                     
+                     {tournament.albumLink && (
+                        <div className="mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 flex items-center justify-between group cursor-pointer hover:bg-blue-50 transition-colors" onClick={() => window.open(tournament.albumLink, '_blank')}>
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600">
+                                 <Target className="w-5 h-5" />
+                              </div>
+                              <div>
+                                 <div className="font-bold text-blue-900 text-sm">Google Photos Album</div>
+                                 <div className="text-blue-600/70 text-xs">Click to view all photos and videos from this event</div>
+                              </div>
+                           </div>
+                           <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
@@ -729,6 +787,7 @@ function AuthenticatedApp({ user, onLogout }) {
        if (docs.length > 0) {
           setSeasons(docs);
           // Only switch season if we are currently on the "default placeholder"
+          // This prevents switching seasons randomly if real data loads in
           if (activeSeason.id === 'default-2025') {
               setActiveSeason(docs[docs.length - 1]);
           }
@@ -748,10 +807,14 @@ function AuthenticatedApp({ user, onLogout }) {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allTourneys = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter by seasonId. 
+      // If a tournament has NO seasonId, we assume it belongs to 'default-2025'.
       const filtered = allTourneys.filter(t => {
          const tSeason = t.seasonId || 'default-2025';
          return tSeason === activeSeason.id;
       });
+      
       setTournaments(filtered);
     });
     return () => unsubscribe();
