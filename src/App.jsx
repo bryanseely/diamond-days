@@ -183,26 +183,62 @@ const BaseballCardStat = ({ label, value, colors }) => (
 
 const SimpleRichText = ({ text }) => {
   if (!text) return null;
+
+  // Regex to find [text](url) format
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+  // Helper to parse a single line for links
+  const parseLine = (line) => {
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(line)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(line.substring(lastIndex, match.index));
+      }
+      // Add the link component
+      parts.push(
+        <a 
+          key={match.index} 
+          href={match[2]} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-[#5BC2BD] underline font-bold hover:text-[#4aa8a3] transition-colors"
+        >
+          {match[1]}
+        </a>
+      );
+      lastIndex = linkRegex.lastIndex;
+    }
+    // Add remaining text
+    if (lastIndex < line.length) {
+      parts.push(line.substring(lastIndex));
+    }
+    return parts.length > 0 ? parts : line;
+  };
+
   const lines = text.split('\n');
   return (
     <div className="text-sm text-slate-700 leading-relaxed font-sans">
       {lines.map((line, index) => {
         // Heading (starts with #)
         if (line.trim().startsWith('#')) {
-           return <h4 key={index} className="text-lg font-black text-[#0C2340] mt-5 mb-2 font-serif" style={{ fontFamily: 'BioRhyme, serif' }}>{line.replace(/^#+\s*/, '')}</h4>;
+           return <h4 key={index} className="text-lg font-black text-[#0C2340] mt-5 mb-2 font-serif" style={{ fontFamily: 'BioRhyme, serif' }}>{parseLine(line.replace(/^#+\s*/, ''))}</h4>;
         }
         // Bullet list item (starts with -)
         if (line.trim().startsWith('-')) {
            return (
               <div key={index} className="flex items-start gap-2 ml-2 mb-1">
                  <div className="w-1.5 h-1.5 rounded-full bg-[#5BC2BD] mt-2 shrink-0" />
-                 <span>{line.replace(/^-\s*/, '')}</span>
+                 <span>{parseLine(line.replace(/^-\s*/, ''))}</span>
               </div>
            );
         }
         // Standard Paragraph (non-empty)
         if (line.trim().length > 0) {
-           return <p key={index} className="mb-3">{line}</p>;
+           return <p key={index} className="mb-3">{parseLine(line)}</p>;
         }
         // Empty line (spacer)
         return <div key={index} className="h-2" />;
