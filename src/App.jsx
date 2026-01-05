@@ -324,7 +324,7 @@ const RosterView = ({ roster, onAdd, onEdit, onDelete, colors }) => {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center mb-12">
-         <h2 className="text-xl font-black text-slate-300 uppercase">Team Roster</h2>
+         <h2 className="text-xl font-black uppercase" style={{ color: colors.accent }}>Team Roster</h2>
          <button onClick={onAdd} className="text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg hover:opacity-90 flex items-center gap-2" style={{ backgroundColor: colors.secondary }}>
             <Plus className="w-4 h-4" /> Add Player
          </button>
@@ -1249,12 +1249,12 @@ function AuthenticatedApp({ user, onLogout }) {
                     </div>
                  </div>
               </div>
-              <div className="flex backdrop-blur-md p-1 rounded-xl border border-white/10 self-start md:self-auto" style={{ backgroundColor: `${colors.primary}80` }}>
+              <div className="flex w-full md:w-auto overflow-x-auto backdrop-blur-md p-1 rounded-xl border border-white/10 self-start md:self-auto no-scrollbar" style={{ backgroundColor: `${colors.primary}80` }}>
                  {['dashboard', 'timeline', 'map', 'roster'].map((v) => (
                     <button 
                       key={v}
                       onClick={() => setView(v)} 
-                      className={`px-5 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${view === v ? 'shadow-lg scale-105 text-slate-900' : 'text-slate-300 hover:bg-white/5'}`}
+                      className={`flex-1 md:flex-none px-4 md:px-5 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap ${view === v ? 'shadow-lg scale-105 text-slate-900' : 'text-slate-300 hover:bg-white/5'}`}
                       style={{ backgroundColor: view === v ? colors.secondary : 'transparent', color: view === v ? colors.primary : undefined }}
                     >
                       {v}
@@ -1407,7 +1407,7 @@ function AuthenticatedApp({ user, onLogout }) {
         {view === 'timeline' && (
            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-xl font-black text-slate-300 uppercase">Season Timeline</h2>
+                 <h2 className="text-xl font-black uppercase" style={{ color: colors.accent }}>Season Timeline</h2>
                  <button onClick={() => { setEditingId(null); setIsFormOpen(true); }} className="text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg hover:opacity-90 flex items-center gap-2" style={{ backgroundColor: colors.secondary }}>
                     <Plus className="w-4 h-4" /> Log Event
                  </button>
