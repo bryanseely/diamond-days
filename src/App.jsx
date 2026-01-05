@@ -4,7 +4,7 @@ import {
   Edit2, Save, X, ChevronRight, ChevronLeft, Layout, 
   BookOpen, ExternalLink, Shield, Zap, Clock, CircleDot, 
   Medal, Map as MapIcon, User, Hash, Star, Target,
-  ChevronDown, Palette, LogOut, LogIn, PenTool
+  ChevronDown, Palette, LogOut, LogIn, PenTool, Users
 } from 'lucide-react';
 import { initializeApp } from "firebase/app";
 import { 
@@ -280,6 +280,133 @@ const WashingtonMap = ({ tournaments, onPinClick }) => {
   );
 };
 
+// --- Roster View ---
+const RosterView = ({ roster, onAdd, onEdit, onDelete, colors }) => {
+  const mainRoster = roster.filter(p => !p.isGuest);
+  const guestRoster = roster.filter(p => p.isGuest);
+
+  const PlayerCard = ({ player, isMain }) => (
+    <div 
+      className={`rounded-xl relative group hover:shadow-md transition-all h-full ${isMain ? 'p-[3px]' : 'border border-slate-100 bg-white p-6'}`}
+      style={isMain ? { background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})` } : {}}
+    >
+      {/* For main roster, we need an inner container for the white background to simulate the border */}
+      <div className={`flex flex-col items-center text-center h-full ${isMain ? 'bg-white rounded-[10px] p-5' : ''}`}>
+        
+        {/* Jersey Number */}
+        <div 
+          className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black mb-3 shadow-inner" 
+          style={{ backgroundColor: isMain ? colors.primary : '#94a3b8', color: 'white', fontFamily: 'BioRhyme, serif' }}
+        >
+          {player.number}
+        </div>
+        
+        {/* Name & Nickname */}
+        <h3 className="font-bold text-lg leading-tight text-slate-800">{player.name}</h3>
+        {player.nickname && (
+           <div className="text-sm font-bold italic mt-0.5" style={{ color: colors.secondary }}>"{player.nickname}"</div>
+        )}
+        
+        {/* Position */}
+        <div className="mt-3 pt-3 border-t border-slate-100 w-full text-xs font-bold uppercase tracking-wider text-slate-400">
+           {player.positions}
+        </div>
+
+        {/* Edit/Delete Overlay */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+           <button onClick={() => onEdit(player)} className="p-1.5 bg-white shadow rounded-full text-slate-400 hover:text-blue-600 border border-slate-100"><Edit2 className="w-3 h-3" /></button>
+           <button onClick={() => onDelete(player.id)} className="p-1.5 bg-white shadow rounded-full text-slate-400 hover:text-red-600 border border-slate-100"><Trash2 className="w-3 h-3" /></button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex justify-between items-center mb-12">
+         <h2 className="text-xl font-black text-slate-300 uppercase">Team Roster</h2>
+         <button onClick={onAdd} className="text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg hover:opacity-90 flex items-center gap-2" style={{ backgroundColor: colors.secondary }}>
+            <Plus className="w-4 h-4" /> Add Player
+         </button>
+      </div>
+
+      {roster.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl shadow-sm text-center border-2 border-dashed border-slate-200">
+           <p className="text-slate-400 font-medium">No players added to the roster yet.</p>
+           <button onClick={onAdd} className="mt-4 px-6 py-2 text-white rounded-lg font-bold text-sm" style={{ backgroundColor: colors.primary }}>Add First Player</button>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+             {mainRoster.map(player => (
+               <PlayerCard key={player.id} player={player} isMain={true} />
+             ))}
+          </div>
+
+          {guestRoster.length > 0 && (
+            <>
+              <div className="flex items-center gap-4 py-4">
+                <div className="h-px bg-slate-200 flex-1"></div>
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Guest Players</h3>
+                <div className="h-px bg-slate-200 flex-1"></div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 opacity-90">
+                 {guestRoster.map(player => (
+                   <PlayerCard key={player.id} player={player} isMain={false} />
+                 ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+ 
+ // --- Player Form Modal ---
+ const PlayerFormModal = ({ initialData, onSave, onCancel, colors }) => {
+   const [formData, setFormData] = useState(initialData || {
+     name: '', number: '', positions: '', nickname: '', isGuest: false
+   });
+ 
+   const handleChange = (e) => {
+     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+     setFormData({...formData, [e.target.name]: value});
+   };
+   
+   return (
+     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[80]">
+       <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl p-6">
+         <h3 className="font-bold uppercase mb-4 text-center" style={{ color: colors.primary }}>{initialData ? 'Edit Player' : 'Add Player'}</h3>
+         <div className="space-y-4">
+             <div><label className="block text-xs font-bold text-slate-500 mb-1">Name</label><input required name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Player Name" /></div>
+             <div className="grid grid-cols-2 gap-4">
+                 <div><label className="block text-xs font-bold text-slate-500 mb-1">Number</label><input required type="number" name="number" value={formData.number} onChange={handleChange} className="w-full p-2 border rounded" placeholder="#" /></div>
+                 <div><label className="block text-xs font-bold text-slate-500 mb-1">Nickname</label><input name="nickname" value={formData.nickname} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Optional" /></div>
+             </div>
+             <div><label className="block text-xs font-bold text-slate-500 mb-1">Positions</label><input name="positions" value={formData.positions} onChange={handleChange} className="w-full p-2 border rounded" placeholder="e.g. SS / 2B" /></div>
+             
+             <div className="flex items-center gap-2 pt-2">
+               <input 
+                 type="checkbox" 
+                 id="isGuest" 
+                 name="isGuest" 
+                 checked={formData.isGuest} 
+                 onChange={handleChange}
+                 className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+               />
+               <label htmlFor="isGuest" className="text-sm font-medium text-slate-600">Guest Player / Sub</label>
+             </div>
+         </div>
+         <div className="flex gap-3 mt-6">
+            <button onClick={onCancel} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded">Cancel</button>
+            <button onClick={() => onSave(formData)} className="flex-1 py-2 text-white font-bold rounded" style={{ backgroundColor: colors.primary }}>Save Player</button>
+         </div>
+       </div>
+     </div>
+   );
+ };
+
 // --- Game Form Modal ---
 const GameFormModal = ({ initialGame, onSave, onCancel, colors }) => {
   const [game, setGame] = useState(initialGame || {
@@ -407,7 +534,7 @@ const SeasonFormModal = ({ initialData, onSave, onCancel }) => {
                </div>
                <div><label className="text-xs font-bold text-slate-500">Team Name</label><input name="teamName" value={formData.teamName} onChange={handleChange} className="w-full p-2 border rounded" placeholder="e.g. City Baseball" /></div>
                <div className="grid grid-cols-3 gap-4">
-                  <div><label className="text-xs font-bold text-slate-500">Number</label><input type= "number" name="number" value={formData.number} onChange={handleChange} className="w-full p-2 border rounded" /></div>
+                  <div><label className="text-xs font-bold text-slate-500">Number</label><input type="number" name="number" value={formData.number} onChange={handleChange} className="w-full p-2 border rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500">Bats</label><select name="bats" value={formData.bats} onChange={handleChange} className="w-full p-2 border rounded"><option>R</option><option>L</option><option>S</option></select></div>
                   <div><label className="text-xs font-bold text-slate-500">Throws</label><select name="throws" value={formData.throws} onChange={handleChange} className="w-full p-2 border rounded"><option>R</option><option>L</option></select></div>
                </div>
@@ -670,13 +797,13 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
                      </div>
 
                      <div className="bg-[#F8F9FA] rounded-xl border border-slate-200 overflow-hidden relative min-h-[400px] flex flex-col">
-                        <div className="flex-1 px-8 pb-4 pt-1">
+                        <div className="flex-1 px-8 pt-1 pb-4">
                            {isJournalEditing ? (
                               <textarea 
                                 className="w-full h-full min-h-[300px] bg-transparent border-0 outline-none text-lg leading-relaxed text-slate-800 resize-none font-sans"
                                 value={journalEntry}
                                 onChange={(e) => setJournalEntry(e.target.value)}
-                                placeholder="Write about the tournament... Use # for headings and - for bullets."
+                                placeholder="Write about the tournament... Use # for headings and - for bullets. Surround links with [ ](url)"
                               />
                            ) : (
                              <div className="prose prose-slate max-w-none">
@@ -692,10 +819,7 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
                            )}
                         </div>
                         
-                        <div className="bg-white border-t border-slate-100 p-4 flex justify-between items-center">
-                           <div className="text-xs text-slate-400 font-medium">
-                              
-                           </div>
+                        <div className="bg-white border-t border-slate-100 p-4 flex justify-end items-center">
                            <button 
                              onClick={isJournalEditing ? saveJournal : () => setIsJournalEditing(true)} 
                              className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors hover:bg-slate-50"
@@ -793,6 +917,7 @@ function AuthenticatedApp({ user, onLogout }) {
   const [seasons, setSeasons] = useState([]);
   const [activeSeason, setActiveSeason] = useState(DEFAULT_SEASON);
   const [tournaments, setTournaments] = useState([]);
+  const [roster, setRoster] = useState([]);
   
   // UI State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -804,6 +929,11 @@ function AuthenticatedApp({ user, onLogout }) {
   const [deleteId, setDeleteId] = useState(null);
   const [view, setView] = useState('dashboard');
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
+
+  // Roster States
+  const [isPlayerFormOpen, setIsPlayerFormOpen] = useState(false);
+  const [editingPlayerId, setEditingPlayerId] = useState(null);
+  const [deletePlayerId, setDeletePlayerId] = useState(null);
 
   const colors = activeSeason.colors || DEFAULT_SEASON.colors;
 
@@ -856,6 +986,23 @@ function AuthenticatedApp({ user, onLogout }) {
     return () => unsubscribe();
   }, [user, activeSeason.id]);
 
+  // Fetch Roster for Active Season
+  useEffect(() => {
+    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'roster'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const filtered = allPlayers.filter(p => {
+         const pSeason = p.seasonId || 'default-2025';
+         return pSeason === activeSeason.id;
+      });
+      // Sort by number numerically
+      filtered.sort((a, b) => parseInt(a.number || 0) - parseInt(b.number || 0));
+      setRoster(filtered);
+    });
+    return () => unsubscribe();
+  }, [user, activeSeason.id]);
+
+
   // Handlers
   const handleSaveTournament = async (data) => {
     const dataWithSeason = { ...data, seasonId: activeSeason.id };
@@ -907,6 +1054,26 @@ function AuthenticatedApp({ user, onLogout }) {
         setSeasonDeleteId(null);
     } catch (e) { console.error(e); }
   };
+
+  const handleSavePlayer = async (data) => {
+    const dataWithSeason = { ...data, seasonId: activeSeason.id };
+    try {
+      if (editingPlayerId) {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'roster', editingPlayerId), dataWithSeason);
+      } else {
+        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'roster'), dataWithSeason);
+      }
+      setIsPlayerFormOpen(false);
+      setEditingPlayerId(null);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeletePlayer = async () => {
+    if (!deletePlayerId) return;
+    await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'roster', deletePlayerId));
+    setDeletePlayerId(null);
+  };
+
 
   const openSeasonEdit = (season) => {
     setEditingSeasonId(season.id);
@@ -1083,7 +1250,7 @@ function AuthenticatedApp({ user, onLogout }) {
                  </div>
               </div>
               <div className="flex backdrop-blur-md p-1 rounded-xl border border-white/10 self-start md:self-auto" style={{ backgroundColor: `${colors.primary}80` }}>
-                 {['dashboard', 'timeline', 'map'].map((v) => (
+                 {['dashboard', 'timeline', 'map', 'roster'].map((v) => (
                     <button 
                       key={v}
                       onClick={() => setView(v)} 
@@ -1282,7 +1449,7 @@ function AuthenticatedApp({ user, onLogout }) {
                           <div className="text-xs text-slate-500 mb-3 flex items-center gap-1 font-medium uppercase"><MapPin className="w-3 h-3" /> {t.location}</div>
                           
                           {t.coverPhoto && (
-                             <div className="h-48 w-full rounded-lg bg-slate-100 mb-3 overflow-hidden">
+                             <div className="h-60 relative overflow-hidden" style={{ backgroundColor: colors.primary }}>
                                 <img src={t.coverPhoto} alt="" className="w-full h-full object-cover" />
                              </div>
                           )}
@@ -1323,6 +1490,17 @@ function AuthenticatedApp({ user, onLogout }) {
                  </div>
               </div>
            </div>
+        )}
+
+        {/* --- ROSTER VIEW --- */}
+        {view === 'roster' && (
+           <RosterView 
+             roster={roster}
+             onAdd={() => { setEditingPlayerId(null); setIsPlayerFormOpen(true); }}
+             onEdit={(player) => { setEditingPlayerId(player.id); setIsPlayerFormOpen(true); }}
+             onDelete={(id) => { setDeletePlayerId(id); }}
+             colors={colors}
+           />
         )}
 
         {/* --- DETAIL VIEW --- */}
@@ -1366,6 +1544,15 @@ function AuthenticatedApp({ user, onLogout }) {
          />
       )}
 
+      {isPlayerFormOpen && (
+        <PlayerFormModal 
+           initialData={editingPlayerId ? roster.find(p => p.id === editingPlayerId) : null}
+           onSave={handleSavePlayer}
+           onCancel={() => { setIsPlayerFormOpen(false); setEditingPlayerId(null); }}
+           colors={colors}
+        />
+      )}
+
       {deleteId && (
         <div className="fixed inset-0 bg-[#0C2340]/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full border border-slate-200">
@@ -1391,10 +1578,24 @@ function AuthenticatedApp({ user, onLogout }) {
             </div>
          </div>
       )}
+
+      {deletePlayerId && (
+         <div className="fixed inset-0 bg-[#0C2340]/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+            <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full border border-slate-200">
+               <h3 className="text-lg font-black text-[#0C2340] mb-2">Remove Player?</h3>
+               <p className="text-slate-600 mb-6 text-sm">This will remove this player from the roster.</p>
+               <div className="flex gap-3">
+                  <button onClick={() => setDeletePlayerId(null)} className="flex-1 py-2.5 text-slate-600 font-bold bg-slate-50 hover:bg-slate-100 rounded-lg text-sm">CANCEL</button>
+                  <button onClick={handleDeletePlayer} className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-sm">REMOVE</button>
+               </div>
+            </div>
+         </div>
+      )}
     </div>
   );
 }
 
+// --- LOGIN COMPONENT ---
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
