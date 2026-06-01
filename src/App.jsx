@@ -583,11 +583,15 @@ const TournamentForm = ({ initialData, onSave, onCancel, colors }) => {
   const removeGame = (idx) => { const newGames = [...formData.games]; newGames.splice(idx, 1); setFormData({ ...formData, games: newGames }); };
   const handleSubmit = (e) => {
     e.preventDefault();
-    const aggStats = (formData.games || []).reduce((acc, g) => {
-       const s = g.stats || INITIAL_GAME_STATS;
-       Object.keys(s).forEach(k => { if (!acc[k]) acc[k] = 0; acc[k] += (s[k] || 0); });
-       return acc;
-    }, {});
+    
+    const aggStats = { ...INITIAL_GAME_STATS };
+    (formData.games || []).forEach(g => {
+       const s = g.stats || {};
+       Object.keys(INITIAL_GAME_STATS).forEach(k => {
+          aggStats[k] += (s[k] || 0);
+       });
+    });
+
     const wins = (formData.games || []).filter(g => g.result === 'W').length;
     const losses = (formData.games || []).filter(g => g.result === 'L').length;
     const ties = (formData.games || []).filter(g => g.result === 'T').length;
@@ -667,11 +671,15 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
 
    const addGameFromDetail = (newGameData) => {
       const updatedGames = [...(tournament.games || []), newGameData];
-      const aggStats = updatedGames.reduce((acc, g) => {
-         const s = g.stats || INITIAL_GAME_STATS;
-         Object.keys(s).forEach(k => { if (!acc[k]) acc[k] = 0; acc[k] += (s[k] || 0); });
-         return acc;
-      }, {});
+      
+      const aggStats = { ...INITIAL_GAME_STATS };
+      updatedGames.forEach(g => {
+         const s = g.stats || {};
+         Object.keys(INITIAL_GAME_STATS).forEach(k => {
+            aggStats[k] += (s[k] || 0);
+         });
+      });
+
       const wins = updatedGames.filter(g => g.result === 'W').length;
       const losses = updatedGames.filter(g => g.result === 'L').length;
       const ties = updatedGames.filter(g => g.result === 'T').length;
@@ -682,7 +690,15 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
    const deleteGame = async (idx) => {
       const updatedGames = [...(tournament.games || [])];
       updatedGames.splice(idx, 1);
-      const aggStats = updatedGames.reduce((acc, g) => { const s = g.stats || INITIAL_GAME_STATS; Object.keys(s).forEach(k => { if (!acc[k]) acc[k] = 0; acc[k] += (s[k] || 0); }); return acc; }, {});
+      
+      const aggStats = { ...INITIAL_GAME_STATS };
+      updatedGames.forEach(g => {
+         const s = g.stats || {};
+         Object.keys(INITIAL_GAME_STATS).forEach(k => {
+            aggStats[k] += (s[k] || 0);
+         });
+      });
+
       const wins = updatedGames.filter(g => g.result === 'W').length;
       const losses = updatedGames.filter(g => g.result === 'L').length;
       const ties = updatedGames.filter(g => g.result === 'T').length;
@@ -1509,7 +1525,7 @@ function AuthenticatedApp({ user, onLogout }) {
               tournament={selectedTournament} 
               onBack={() => setView('dashboard')}
               onEdit={openEdit}
-              onDelete={handleDeleteTournament}
+              onDelete={(id) => setDeleteId(id)}
               onUpdate={handleUpdateTournament}
               colors={colors}
            />
