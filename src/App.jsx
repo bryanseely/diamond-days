@@ -61,6 +61,7 @@ const COLORS = {
 // Default Season Data
 const DEFAULT_SEASON = {
   id: 'default-2025',
+  playerName: 'BEN SEELY', // Adds the default name
   year: '2025',
   teamName: 'City Baseball 9U Navy',
   age: '9',
@@ -451,7 +452,7 @@ const GameFormModal = ({ initialGame, onSave, onCancel, colors }) => {
              <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Type</label>
                 <select className="w-full p-2 border rounded" value={game.type} onChange={e => setGame({...game, type: e.target.value})}>
-                   <option>Pool Play</option><option>Elimination</option><option>Championship</option>
+                   <option>Pool Play</option><option>Elimination</option><option>Championship</option><option>Scrimmage</option>
                 </select>
              </div>
           </div>
@@ -512,6 +513,7 @@ const GameFormModal = ({ initialGame, onSave, onCancel, colors }) => {
 // --- Season Form Modal ---
 const SeasonFormModal = ({ initialData, onSave, onCancel }) => {
    const [formData, setFormData] = useState(initialData || {
+      playerName: '', // Adds field to form state
       year: new Date().getFullYear().toString(),
       teamName: '', age: '', number: '',
       positions: '', bats: 'R', throws: 'R', hometown: '',
@@ -528,6 +530,8 @@ const SeasonFormModal = ({ initialData, onSave, onCancel }) => {
                <Trophy className="w-5 h-5 text-yellow-500" /> {initialData ? 'Edit Season' : 'Start New Season'}
             </h2>
             <div className="space-y-4">
+               {/* NEW FIELD FOR PLAYER NAME */}
+               <div><label className="text-xs font-bold text-slate-500">Player Name</label><input name="playerName" value={formData.playerName} onChange={handleChange} className="w-full p-2 border rounded" placeholder="e.g. Ben Seely" /></div>
                <div className="grid grid-cols-2 gap-4">
                   <div><label className="text-xs font-bold text-slate-500">Year</label><input name="year" value={formData.year} onChange={handleChange} className="w-full p-2 border rounded" /></div>
                   <div><label className="text-xs font-bold text-slate-500">Age Group</label><input name="age" value={formData.age} onChange={handleChange} className="w-full p-2 border rounded" placeholder="e.g. 10" /></div>
@@ -612,7 +616,7 @@ const TournamentForm = ({ initialData, onSave, onCancel, colors }) => {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">Tournament Name</label><input required type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-3 border border-slate-200 bg-slate-50 rounded-lg font-bold" style={{ color: colors.primary }} placeholder="e.g. State Championship" /></div>
              <div><label className="block text-xs font-bold text-slate-500 mb-1">Location</label><input required type="text" name="location" value={formData.location} onChange={handleChange} className="w-full p-3 border border-slate-200 rounded-lg" placeholder="e.g. Seattle" /></div>
-             <div><label className="block text-xs font-bold text-slate-500 mb-1">Result</label><select name="result" value={formData.result} onChange={handleChange} className="w-full p-3 border border-slate-200 rounded-lg bg-white"><option>Pool Play ⚾</option><option>Champions 🏆</option><option>2nd Place 🥈</option><option>Semi-Finals 🥉</option><option>Consolation Champs 🏅</option></select></div>
+             <div><label className="block text-xs font-bold text-slate-500 mb-1">Result</label><select name="result" value={formData.result} onChange={handleChange} className="w-full p-3 border border-slate-200 rounded-lg bg-white"><option>Pool Play ⚾</option><option>Champions 🏆</option><option>2nd Place 🥈</option><option>Semi-Finals 🥉</option><option>Consolation Champs 🏅</option><option>Scrimmage 🤝</option></select></div>
              <div><label className="block text-xs font-bold text-slate-500 mb-1">Start Date</label><input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full p-3 border border-slate-200 rounded-lg" /></div>
              <div><label className="block text-xs font-bold text-slate-500 mb-1">End Date</label><input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className="w-full p-3 border border-slate-200 rounded-lg" /></div>
              <div className="md:col-span-2 grid grid-cols-3 gap-4">
@@ -1185,7 +1189,7 @@ function AuthenticatedApp({ user, onLogout }) {
                        onClick={() => setIsSeasonDropdownOpen(!isSeasonDropdownOpen)}
                        className="flex items-center gap-2 text-white/90 hover:text-white font-bold text-sm bg-black/20 px-3 py-1.5 rounded-lg transition-all"
                     >
-                       <span>{activeSeason.year} Season</span>
+                       <span>{activeSeason.playerName ? `${activeSeason.playerName.split(' ')[0]} • ` : ''}{activeSeason.year} Season</span>
                        <ChevronDown className="w-4 h-4" />
                     </button>
                     
@@ -1250,9 +1254,9 @@ function AuthenticatedApp({ user, onLogout }) {
                     <span className="font-black text-3xl md:text-4xl" style={{ fontFamily: 'BioRhyme, serif', color: colors.primary }}>{activeSeason.number}</span>
                  </div>
                  <div className="flex flex-col">
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none text-white drop-shadow-sm mb-2" style={{ fontFamily: 'BioRhyme, serif' }}>
-                       BEN SEELY
-                    </h1>
+                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none text-white drop-shadow-sm mb-2 uppercase" style={{ fontFamily: 'BioRhyme, serif' }}>
+                        {activeSeason.playerName || 'PLAYER NAME'}
+                     </h1>
                     <div className="text-white/60 text-sm font-bold tracking-widest uppercase mb-2">{activeSeason.teamName}</div>
                     <div className="flex flex-wrap items-center gap-4 text-white/80 font-bold text-sm tracking-wider uppercase">
                        <span className="flex items-center gap-1"><Shield className="w-4 h-4" style={{ color: colors.secondary }} /> {activeSeason.positions}</span>
