@@ -939,7 +939,7 @@ function AuthenticatedApp({ user, onLogout }) {
   const [tournaments, setTournaments] = useState([]);
   const [roster, setRoster] = useState([]);
   
-  // UI State
+// UI State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSeasonModalOpen, setIsSeasonModalOpen] = useState(false);
   const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false);
@@ -947,8 +947,27 @@ function AuthenticatedApp({ user, onLogout }) {
   const [seasonDeleteId, setSeasonDeleteId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [view, setView] = useState('dashboard');
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
+
+  // Read initial view from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialView = urlParams.get('view') || 'dashboard';
+  const [view, setView] = useState(initialView);
+
+  // Custom handlers to sync State with the URL
+  const handleSetView = (newView) => {
+    setView(newView);
+    const url = new URL(window.location);
+    url.searchParams.set('view', newView);
+    window.history.pushState({}, '', url);
+  };
+
+  const handleSetSeason = (season) => {
+    setActiveSeason(season);
+    const url = new URL(window.location);
+    url.searchParams.set('season', season.id);
+    window.history.pushState({}, '', url);
+  };
 
   // Roster States
   const [isPlayerFormOpen, setIsPlayerFormOpen] = useState(false);
@@ -965,17 +984,23 @@ function AuthenticatedApp({ user, onLogout }) {
     document.head.appendChild(link);
   }, []);
 
-  // Fetch Seasons
+// Fetch Seasons
   useEffect(() => {
     const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'seasons'), orderBy('year', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
        if (docs.length > 0) {
           setSeasons(docs);
-          // Only switch season if we are currently on the "default placeholder"
-          // This prevents switching seasons randomly if real data loads in
-          if (activeSeason.id === 'default-2025') {
-              setActiveSeason(docs[docs.length - 1]);
+          
+          // Check if there is a season requested in the URL
+          const urlSeasonId = new URLSearchParams(window.location.search).get('season');
+          const requestedSeason = docs.find(s => s.id === urlSeasonId);
+
+          if (requestedSeason) {
+             setActiveSeason(requestedSeason);
+          } else if (activeSeason.id === 'default-2025') {
+             // Fallback to the most recent season
+             setActiveSeason(docs[docs.length - 1]);
           }
        } else {
           setSeasons([DEFAULT_SEASON]);
@@ -1199,7 +1224,7 @@ function AuthenticatedApp({ user, onLogout }) {
                             {seasons.map(s => (
                                <div key={s.id} className="flex items-center justify-between hover:bg-slate-50 group">
                                   <button 
-                                    onClick={() => { setActiveSeason(s); setIsSeasonDropdownOpen(false); }}
+                                    onClick={() => { handleSetSeason(s); setIsSeasonDropdownOpen(false); }}
                                     className={`flex-1 text-left px-4 py-2 text-sm font-bold ${activeSeason.id === s.id ? 'text-blue-900 bg-blue-50' : 'text-slate-600'}`}
                                   >
                                      {s.year} Season
@@ -1273,7 +1298,7 @@ function AuthenticatedApp({ user, onLogout }) {
                  {['dashboard', 'timeline', 'map', 'roster'].map((v) => (
                     <button 
                       key={v}
-                      onClick={() => setView(v)} 
+                      onClick={() => handleSetView(v)} 
                       className={`flex-1 md:flex-none px-4 md:px-5 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap ${view === v ? 'shadow-lg scale-105 text-slate-900' : 'text-slate-300 hover:bg-white/5'}`}
                       style={{ backgroundColor: view === v ? colors.secondary : 'transparent', color: view === v ? colors.primary : undefined }}
                     >
@@ -1527,7 +1552,7 @@ function AuthenticatedApp({ user, onLogout }) {
         {view === 'detail' && selectedTournament && (
            <TournamentDetail 
               tournament={selectedTournament} 
-              onBack={() => setView('dashboard')}
+              onBack={() => handleSetView('dashboard')}
               onEdit={openEdit}
               onDelete={(id) => setDeleteId(id)}
               onUpdate={handleUpdateTournament}
