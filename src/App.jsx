@@ -133,6 +133,32 @@ const INITIAL_GAME_STATS = {
   pitchingWins: 0, pitchingLosses: 0, saves: 0,
 };
 
+// --- Pitching Math Helpers ---
+const parseIPToOuts = (ip) => {
+  const val = parseFloat(ip) || 0;
+  const full = Math.floor(val);
+  const partial = Math.round((val - full) * 10);
+  return (full * 3) + partial;
+};
+
+const formatOutsToIP = (outs) => {
+  const full = Math.floor(outs / 3);
+  const partial = outs % 3;
+  return full + (partial / 10);
+};
+
+const calculateERA = (er, ip, inningsPerGame = 6) => {
+  const outs = parseIPToOuts(ip);
+  if (outs === 0) return '0.00';
+  return ((er * inningsPerGame) / (outs / 3)).toFixed(2);
+};
+
+const calculateWHIP = (walks, hits, ip) => {
+  const outs = parseIPToOuts(ip);
+  if (outs === 0) return '0.00';
+  return ((walks + hits) / (outs / 3)).toFixed(2);
+};
+
 // --- Components ---
 
 const StatCard = ({ label, value, subtext, icon: Icon, colorClass = "text-slate-600", border = true, noIcon = false, colors }) => (
@@ -589,12 +615,18 @@ const TournamentForm = ({ initialData, onSave, onCancel, colors }) => {
     e.preventDefault();
     
     const aggStats = { ...INITIAL_GAME_STATS };
+    let totalOuts = 0;
     (formData.games || []).forEach(g => {
        const s = g.stats || {};
        Object.keys(INITIAL_GAME_STATS).forEach(k => {
-          aggStats[k] += (s[k] || 0);
+          if (k === 'inningsPitched') {
+              totalOuts += parseIPToOuts(s[k]);
+          } else {
+              aggStats[k] += (s[k] || 0);
+          }
        });
     });
+    aggStats.inningsPitched = formatOutsToIP(totalOuts);
 
     const wins = (formData.games || []).filter(g => g.result === 'W').length;
     const losses = (formData.games || []).filter(g => g.result === 'L').length;
@@ -673,16 +705,22 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
    const [isJournalEditing, setIsJournalEditing] = useState(false);
    const [isDetailGameModalOpen, setIsDetailGameModalOpen] = useState(false);
 
-   const addGameFromDetail = (newGameData) => {
+const addGameFromDetail = (newGameData) => {
       const updatedGames = [...(tournament.games || []), newGameData];
       
       const aggStats = { ...INITIAL_GAME_STATS };
+      let totalOuts = 0;
       updatedGames.forEach(g => {
          const s = g.stats || {};
          Object.keys(INITIAL_GAME_STATS).forEach(k => {
-            aggStats[k] += (s[k] || 0);
+            if (k === 'inningsPitched') {
+                totalOuts += parseIPToOuts(s[k]);
+            } else {
+                aggStats[k] += (s[k] || 0);
+            }
          });
       });
+      aggStats.inningsPitched = formatOutsToIP(totalOuts);
 
       const wins = updatedGames.filter(g => g.result === 'W').length;
       const losses = updatedGames.filter(g => g.result === 'L').length;
@@ -696,12 +734,18 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
       updatedGames.splice(idx, 1);
       
       const aggStats = { ...INITIAL_GAME_STATS };
+      let totalOuts = 0;
       updatedGames.forEach(g => {
          const s = g.stats || {};
          Object.keys(INITIAL_GAME_STATS).forEach(k => {
-            aggStats[k] += (s[k] || 0);
+            if (k === 'inningsPitched') {
+                totalOuts += parseIPToOuts(s[k]);
+            } else {
+                aggStats[k] += (s[k] || 0);
+            }
          });
       });
+      aggStats.inningsPitched = formatOutsToIP(totalOuts);
 
       const wins = updatedGames.filter(g => g.result === 'W').length;
       const losses = updatedGames.filter(g => g.result === 'L').length;
@@ -719,9 +763,9 @@ const TournamentDetail = ({ tournament, onBack, onEdit, onDelete, onUpdate, colo
    const onBase = hits + (tournament.walks||0) + (tournament.hbp||0);
    const obp = plateApps > 0 ? (onBase / plateApps).toFixed(3).replace('0.', '.') : '.000';
 
-   const ip = tournament.inningsPitched || 0;
+const ip = tournament.inningsPitched || 0;
    const er = tournament.earnedRuns || 0;
-   const era = ip > 0 ? ((er * 6) / ip).toFixed(2) : '-';
+   const era = calculateERA(er, ip);
 
    return (
       <div className="animate-in slide-in-from-right duration-300">
@@ -1131,7 +1175,10 @@ function AuthenticatedApp({ user, onLogout }) {
   const selectedTournament = tournaments.find(t => t.id === selectedTournamentId);
 
   // Derived Stats
+ // Derived Stats
   const stats = useMemo(() => {
+    let totalOuts = 0;
+    
     const total = tournaments.reduce((acc, t) => {
       const g = t.games || [];
       const wins = t.wins || g.filter(x=>x.result==='W').length || 0;
@@ -1139,6 +1186,9 @@ function AuthenticatedApp({ user, onLogout }) {
       const ties = t.ties || g.filter(x=>x.result==='T').length || 0;
       const isChamp = t.result && (t.result.includes('Champions') || t.result.includes('🏆'));
       const isRunnerUp = t.result && (t.result.includes('2nd Place') || t.result.includes('🥈'));
+
+      // Accumulate outs here
+      totalOuts += parseIPToOuts(t.inningsPitched);
 
       return {
         games: acc.games + (t.gamesPlayed || g.length || 0),
@@ -1163,7 +1213,6 @@ function AuthenticatedApp({ user, onLogout }) {
         sac: acc.sac + (t.sacrifices || 0),
         
         gamesPitched: acc.gamesPitched + (t.gamesPitched || 0),
-        ip: acc.ip + (t.inningsPitched || 0),
         hitsAllowed: acc.hitsAllowed + (t.hitsAllowed || 0),
         er: acc.er + (t.earnedRuns || 0),
         so: acc.so + (t.strikeouts || 0),
@@ -1175,8 +1224,10 @@ function AuthenticatedApp({ user, onLogout }) {
     }, { 
       games: 0, wins: 0, losses: 0, ties: 0, miles: 0, titles: 0, runnerUps: 0,
       pa: 0, ab: 0, runs: 0, singles: 0, doubles: 0, triples: 0, hr: 0, walks: 0, hbp: 0, rbi: 0, sb: 0, sac: 0,
-      gamesPitched: 0, ip: 0, hitsAllowed: 0, er: 0, so: 0, bb_pitch: 0, p_wins: 0, p_losses: 0, saves: 0
+      gamesPitched: 0, hitsAllowed: 0, er: 0, so: 0, bb_pitch: 0, p_wins: 0, p_losses: 0, saves: 0
     });
+
+    total.ip = formatOutsToIP(totalOuts);
 
     const totalHits = total.singles + total.doubles + total.triples + total.hr;
     const avg = total.ab > 0 ? (totalHits / total.ab).toFixed(3).replace('0.', '.') : '.000';
@@ -1185,8 +1236,9 @@ function AuthenticatedApp({ user, onLogout }) {
     const totalBases = total.singles + (2 * total.doubles) + (3 * total.triples) + (4 * total.hr);
     const slg = total.ab > 0 ? (totalBases / total.ab) : 0;
     const ops = (parseFloat(obp) + slg).toFixed(3);
-    const era = total.ip > 0 ? ((total.er * 6) / total.ip).toFixed(2) : '0.00';
-    const whip = total.ip > 0 ? ((total.bb_pitch + total.hitsAllowed) / total.ip).toFixed(2) : '0.00';
+    
+    const era = calculateERA(total.er, total.ip);
+    const whip = calculateWHIP(total.bb_pitch, total.hitsAllowed, total.ip);
 
     return { ...total, totalHits, avg, obp, ops, era, whip };
   }, [tournaments]);
